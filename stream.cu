@@ -6,7 +6,7 @@
 #include "setup.h"
 
 
-#define N 100000  // Adjusted size of vectors for 16 GB memory per GPU
+#define N 10000000  // Adjusted size of vectors for 16 GB memory per GPU
 #define NUM_GRAPHS 100
 #define NUM_OPERATIONS 200
 
