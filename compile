@@ -1,0 +1,4 @@
+nvcc -std=c++17 -o stream stream.cu
+./stream > stream.txt
+nvcc -std=c++17 -o cudagraph cudagraph.cu
+./cudagraph

@@ -1,3 +1,0 @@
-Graph Create time: 0.494806 milliseconds
-Time for 100 CUDA Graphs with stream captures: 443.832 milliseconds
-Exec time: 443.279 milliseconds

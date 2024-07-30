@@ -3,9 +3,12 @@
 #include <iostream>
 #include <vector>
 #include <chrono>
+#include "setup.h"
 
-#define N 1000000  // Size of vectors
-#define NUM_OPERATIONS 2000
+
+#define N 100000  // Adjusted size of vectors for 16 GB memory per GPU
+#define NUM_GRAPHS 100
+#define NUM_OPERATIONS 200
 
 __global__ void vectorAdd(const float* A, const float* B, float* C, int n) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -13,6 +16,14 @@ __global__ void vectorAdd(const float* A, const float* B, float* C, int n) {
         C[i] = A[i] + B[i];
     }
 }
+
+void _check_cuda(cudaError_t err, std::string filename, int line) {
+  if(err != cudaSuccess) {
+    throw std::runtime_error(
+      "cuda no success at " + filename + ":" + write_with_ss(line));
+  }
+}
+#define check_cuda(call) _check_cuda(call, __FILE__, __LINE__)
 
 int main() {
     float *d_A, *d_B, *d_C;
@@ -32,15 +43,24 @@ int main() {
     dim3 threadsPerBlock(256);
     dim3 blocksPerGrid((N + threadsPerBlock.x - 1) / threadsPerBlock.x);
 
-    auto start = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < NUM_OPERATIONS; ++i) {
-        vectorAdd<<<blocksPerGrid, threadsPerBlock, 0, stream>>>(d_A, d_B, d_C, N);
+    cudaEvent_t start, stop;
+    check_cuda(cudaEventCreate(&start));
+    check_cuda(cudaEventCreate(&stop));
+    check_cuda(cudaEventRecord(start, stream));
+    
+    for (int i = 0; i < NUM_GRAPHS; ++i) {
+        for (int j = 0; j < NUM_OPERATIONS; ++j) {
+            vectorAdd<<<blocksPerGrid, threadsPerBlock, 0, stream>>>(d_A, d_B, d_C, N);
+        }
+        cudaStreamSynchronize(stream);
     }
-    cudaStreamSynchronize(stream);
-    auto end = std::chrono::high_resolution_clock::now();
+    
+    check_cuda(cudaEventRecord(stop, stream));
+    check_cuda(cudaEventSynchronize(stop));
+    float msec = 0.0f;
+    check_cuda(cudaEventElapsedTime(&msec, start, stop));
 
-    std::chrono::duration<double> elapsed = end - start;
-    std::cout << "Time for 2000 operations with streams: " << elapsed.count() << " seconds\n";
+    std::cout << "Time for 100 stream with cudaEventRecord: " << msec << " milliseconds\n";
 
     cudaFree(d_A);
     cudaFree(d_B);
